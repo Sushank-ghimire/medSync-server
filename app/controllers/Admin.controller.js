@@ -1,5 +1,5 @@
 import { asyncHandler } from "../utils/AsyncHandler.js";
-import bcrypt from "bcryptjs/dist/bcrypt.js";
+import bcrypt from "bcryptjs";
 import { v2 as cloudinary } from "cloudinary";
 import { Doctor } from "../models/Doctor.models.js";
 import jwt from "jsonwebtoken";
@@ -9,13 +9,14 @@ const addDoctors = asyncHandler(async (req, res) => {
     const {
       name,
       email,
-      address,
+      address1,
       speciality,
       degree,
       experience,
       about,
       fees,
       password,
+      address2,
     } = req.body;
 
     const dbDoctor = await Doctor.findOne({ email: email });
@@ -31,9 +32,17 @@ const addDoctors = asyncHandler(async (req, res) => {
 
     // Check if all required fields are present
     if (
-      [name, email, speciality, degree, experience, about, password].some(
-        (field) => !field || field === ""
-      )
+      [
+        name,
+        email,
+        speciality,
+        degree,
+        experience,
+        about,
+        password,
+        address1,
+        address2,
+      ].some((field) => !field || field === "")
     ) {
       return res
         .status(400)
@@ -49,17 +58,10 @@ const addDoctors = asyncHandler(async (req, res) => {
         resource_type: "image",
       });
     }
+    const finalAddress1 = address1 || address2;
+    const finalAddress2 = address2 || address1;
 
-    let parsedAddress;
-    try {
-      parsedAddress =
-        typeof address === "string" ? JSON.parse(address) : address;
-    } catch (err) {
-      return res.status(400).json({
-        message: "Invalid address format. Make sure it's a valid JSON string.",
-        success: false,
-      });
-    }
+    const parsedAddress = { line1: finalAddress1, line2: finalAddress2 };
 
     const hashedPassword = await bcrypt.hash(password, 5);
 
@@ -108,14 +110,23 @@ const adminLogin = asyncHandler(async (req, res) => {
       jwtSecret: `${process.env.ADMIN_TOKEN_SECRET}`,
     };
 
+    const hashedPassword = await bcrypt.hash(adminCredentials.password, 5);
     if (
       adminCredentials.email === email &&
       adminCredentials.password === password
     ) {
       const token = await jwt.sign(
-        { email: adminCredentials.email, password: adminCredentials.password },
-        adminCredentials.jwtSecret
+        { email: adminCredentials.email, password: hashedPassword },
+        adminCredentials.jwtSecret,
+        { expiresIn: "2d" }
       );
+
+      res.cookie("authToken", token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production", // Use secure cookies in production
+        maxAge: 24 * 60 * 60 * 1000 * 2,
+      });
+
       return res.status(200).json({
         success: true,
         message: "Admin successfully logged in",
@@ -132,11 +143,38 @@ const adminLogin = asyncHandler(async (req, res) => {
   }
 });
 
-const adminLogout = asyncHandler(async (req, res) => {
+const allDoctors = asyncHandler(async (req, res) => {
   try {
+    const doctorList = await Doctor.find().select("-password");
+    if (doctorList) {
+      return res.status(200).json({
+        success: true,
+        message: "Doctors founded",
+        doctors: doctorList,
+      });
+    }
+    return res.status(200).json({
+      success: true,
+      message: "There are no added doctors in the database.",
+    });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
   }
 });
 
-export { addDoctors, adminLogin, adminLogout };
+const adminLogout = asyncHandler(async (req, res) => {
+  try {
+    await res.clearCookie("authToken");
+
+    return res.status(200).json({
+      success: true,
+      message: "Admin successfully logged out",
+    });
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ success: false, message: "Failed to logout user" });
+  }
+});
+
+export { addDoctors, adminLogin, allDoctors, adminLogout };

@@ -6,6 +6,7 @@ import { connectCloudinary } from "./utils/CloudinaryConfig.js";
 import adminRouter from "./routes/Admin.route.js";
 import userRouter from "./routes/User.route.js";
 import doctorRouter from "./routes/Doctor.route.js";
+import cookieParser from "cookie-parser";
 
 const PORT = 3000;
 
@@ -13,6 +14,8 @@ const app = express();
 configDotenv();
 
 app.use(cors());
+
+app.use(cookieParser());
 
 app.use(express.json());
 
