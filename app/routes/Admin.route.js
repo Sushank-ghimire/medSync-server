@@ -4,6 +4,7 @@ import {
   adminLogin,
   adminLogout,
   allDoctors,
+  changeDoctorAvialablity,
 } from "../controllers/Admin.controller.js";
 import { upload } from "../middleware/multer.js";
 import adminAuthMiddleware from "../middleware/AdminAuth.middleware.js";
@@ -14,6 +15,7 @@ adminRouter
   .post("/addDoctors", adminAuthMiddleware, upload.single("image"), addDoctors)
   .post("/login", adminLogin)
   .post("/getDoctors", adminAuthMiddleware, allDoctors)
-  .delete("/logout", adminLogout);
+  .delete("/logout", adminLogout)
+  .post("/change-avilable", changeDoctorAvialablity);
 
 export default adminRouter;

@@ -177,4 +177,37 @@ const adminLogout = asyncHandler(async (req, res) => {
   }
 });
 
-export { addDoctors, adminLogin, allDoctors, adminLogout };
+const changeDoctorAvialablity = asyncHandler(async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    const findDoctor = await Doctor.findOne({ email: email });
+
+    if (findDoctor) {
+      findDoctor.available = !findDoctor.available;
+      await findDoctor.save();
+      return res
+        .status(200)
+        .json({ success: true, message: "Doctor avialablity changed" });
+    }
+    return res.status(400).json({
+      success: false,
+      message: "Something went wrong while changing doctor avilability.",
+      doctor: findDoctor,
+    });
+  } catch (error) {
+    console.log("Doctor avilabality change error : ", error.message);
+    return res.status(400).json({
+      success: false,
+      message: "Failed to change doctor avilability.",
+    });
+  }
+});
+
+export {
+  addDoctors,
+  adminLogin,
+  allDoctors,
+  adminLogout,
+  changeDoctorAvialablity,
+};
