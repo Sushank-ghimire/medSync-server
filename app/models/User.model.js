@@ -13,11 +13,10 @@ const userSchema = new mongoose.Schema(
     },
     address: {
       type: Object,
-      required: true,
       default: { line1: "", line2: "" },
     },
     gender: { type: String, default: "Not selected" },
-    dob: { type: Date, required: true, default: "Not selected" },
+    dob: { type: Date },
     slots_booked: { type: Object, default: {} },
   },
   { timestamps: true, minimize: false }

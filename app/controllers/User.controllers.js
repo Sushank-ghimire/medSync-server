@@ -1,20 +1,29 @@
 import { Users } from "../models/User.model.js";
 import { asyncHandler } from "../utils/AsyncHandler.js";
 import jwt from "jsonwebtoken";
+import bcrypt from "bcryptjs";
 
 const handleLogin = asyncHandler(async (req, res) => {
   try {
     const userEmail = req.body.email;
 
-    const token = await jwt.sign(userEmail, process.env.USER_TOKEN_KEY, {
+    const user = await Users.findOne({ email: userEmail }).select(
+      "-password -email"
+    );
+
+    const token = jwt.sign({ email: userEmail }, process.env.USER_TOKEN_KEY, {
       expiresIn: "2d",
     });
 
     res.cookie("userAuth", token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV,
+      secure: process.env.NODE_ENV === "production",
       maxAge: 60 * 60 * 24 * 2 * 1000,
     });
+
+    return res
+      .status(200)
+      .json({ success: true, message: "User login successfull", user: user });
   } catch (error) {
     return res
       .status(500)
@@ -24,9 +33,11 @@ const handleLogin = asyncHandler(async (req, res) => {
 
 const handleRegister = asyncHandler(async (req, res) => {
   try {
-    const { name, email, password } = await req.body;
+    const { name, email, password } = req.body;
 
     const userCheck = await Users.findOne({ email: email });
+
+    const hashedPass = await bcrypt.hash(password, 5);
 
     if (userCheck) {
       return res
@@ -34,13 +45,17 @@ const handleRegister = asyncHandler(async (req, res) => {
         .json({ message: "Email is already used.", success: false });
     }
 
-    if ([name, email, password].some((field) => !field || field === "")) {
+    if ([name, email, password].some((field) => !field)) {
       return res
         .status(400)
         .json({ message: "All fields are required.", success: false });
     }
 
-    const user = await Users.create({ email, password, name });
+    const user = await Users.create({
+      email: email,
+      password: hashedPass,
+      name,
+    });
 
     if (user) {
       return res.status(201).json({
@@ -50,9 +65,12 @@ const handleRegister = asyncHandler(async (req, res) => {
       });
     }
   } catch (error) {
-    return res
-      .status(500)
-      .json({ message: "Internal server error.", success: false });
+    console.log("Error while creating account : ", error.message);
+    return res.status(500).json({
+      message: "Internal server error.",
+      success: false,
+      error: error.message,
+    });
   }
 });
 
@@ -67,6 +85,7 @@ const handleUserUpdate = asyncHandler(async (req, res) => {
 
 const bookAppointment = asyncHandler(async (req, res) => {
   try {
+    const { date, time, doctorEmail, userEmail } = req.body;
     return res
       .status(200)
       .json({ success: true, message: "Appointment booked successfully" });
